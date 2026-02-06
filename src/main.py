@@ -18,12 +18,18 @@ def run_game() -> None:
     # Initialize with some food
     world.randomize_food(Config.INITIAL_FOOD_COUNT)
 
+    # Initialize population
+    world.spawn_initial_population(Config.INITIAL_POPULATION)
+
     running: bool = True
     while running:
         # Event Handling
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+
+        # Logic Update
+        world.update()
 
         # Drawing
         screen.fill(Config.COLOR_BG)
