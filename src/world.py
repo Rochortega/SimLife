@@ -87,6 +87,27 @@ class World:
 
         self.entities = active_entities
 
+    def clear_grid(self) -> None:
+        """
+        Clears all walls and food from the grid.
+        Entities remain.
+        """
+        self.grid.fill(Config.CELL_EMPTY)
+
+    def place_wall(self, x: int, y: int) -> None:
+        """
+        Places a wall at grid coordinates if within bounds.
+        """
+        if 0 <= x < self.width_cells and 0 <= y < self.height_cells:
+            self.grid[y, x] = Config.CELL_WALL
+
+    def place_food(self, x: int, y: int) -> None:
+        """
+        Places food at grid coordinates if within bounds.
+        """
+        if 0 <= x < self.width_cells and 0 <= y < self.height_cells:
+            self.grid[y, x] = Config.CELL_FOOD
+
     def draw(self, surface: pygame.Surface) -> None:
         """
         Renders the grid to the given surface.
