@@ -11,10 +11,19 @@ class Config:
     INITIAL_POPULATION: int = 50
 
     # Simulation Constants
-    GENOME_LENGTH: int = 10
     STARTING_ENERGY: float = 100.0
     ENERGY_DECAY: float = 0.5
     ENERGY_FROM_FOOD: float = 20.0
+
+    # Brain / Genome Constants
+    INPUT_SIZE: int = 5
+    HIDDEN_SIZE: int = 8
+    OUTPUT_SIZE: int = 2
+
+    # Genome Length = (Input * Hidden) + (Hidden * Output)
+    GENOME_LENGTH: int = (INPUT_SIZE * HIDDEN_SIZE) + (HIDDEN_SIZE * OUTPUT_SIZE)
+
+    VISION_RADIUS: int = 50 # In cells
 
     # Colors (R, G, B)
     COLOR_BG: tuple[int, int, int] = (10, 10, 10)       # Background (Dark, not pure black)

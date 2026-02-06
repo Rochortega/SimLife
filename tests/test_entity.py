@@ -8,8 +8,10 @@ from src.world import World
 class TestEntity(unittest.TestCase):
     def setUp(self):
         self.genome = Genome(Config.GENOME_LENGTH)
-        # Create a small grid 10x10
-        self.grid = np.zeros((10, 10), dtype=np.int8)
+        # Use a real World instance instead of raw grid
+        self.world = World()
+        # Manually set small size for testing logic if needed, but World defaults to screen size.
+        # We can just use the world as is, or manipulate its grid directly.
 
     def test_initialization(self):
         entity = Entity(5, 5, self.genome)
@@ -19,39 +21,38 @@ class TestEntity(unittest.TestCase):
 
     def test_move_valid(self):
         entity = Entity(5, 5, self.genome)
-        entity.move(1, 0, self.grid) # Move right
+        entity.move(1, 0, self.world) # Move right
         self.assertEqual(entity.position, [6, 5])
 
     def test_move_wall_collision(self):
         entity = Entity(5, 5, self.genome)
-        self.grid[5, 6] = Config.CELL_WALL # Place wall to the right
-        entity.move(1, 0, self.grid)
+        self.world.place_wall(6, 5) # Place wall to the right (x=6, y=5)
+        entity.move(1, 0, self.world)
         self.assertEqual(entity.position, [5, 5]) # Should not move
 
     def test_move_bounds_collision(self):
-        entity = Entity(9, 5, self.genome) # At right edge
-        entity.move(1, 0, self.grid)
-        self.assertEqual(entity.position, [9, 5]) # Should not move
+        # Place entity at edge
+        width = self.world.width_cells
+        entity = Entity(width - 1, 5, self.genome)
+        entity.move(1, 0, self.world)
+        self.assertEqual(entity.position, [width - 1, 5]) # Should not move
 
     def test_eat_food(self):
         entity = Entity(5, 5, self.genome)
-        self.grid[5, 6] = Config.CELL_FOOD
+        self.world.place_food(6, 5) # Place food at x=6, y=5
 
         initial_energy = entity.energy
-        entity.move(1, 0, self.grid)
+        entity.move(1, 0, self.world)
 
         self.assertEqual(entity.position, [6, 5])
         self.assertEqual(entity.energy, initial_energy + Config.ENERGY_FROM_FOOD)
-        self.assertEqual(self.grid[5, 6], Config.CELL_EMPTY) # Food consumed
+        self.assertEqual(self.world.grid[5, 6], Config.CELL_EMPTY) # Food consumed
+        self.assertNotIn((6, 5), self.world.food_list) # Removed from list
 
     def test_update_decay(self):
         entity = Entity(5, 5, self.genome)
         initial_energy = entity.energy
-        entity.update(self.grid)
-        # Energy should decrease by decay amount
-        # Note: it might decrease slightly less or more if it found food randomly,
-        # but in an empty grid (0s), it won't find food.
-        # However, update() calls random move, which might hit bounds.
+        entity.update(self.world)
         self.assertEqual(entity.energy, initial_energy - Config.ENERGY_DECAY)
         self.assertEqual(entity.age, 1)
 

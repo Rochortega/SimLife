@@ -12,6 +12,7 @@ class World:
         # grid shape is (rows, cols) -> (height, width)
         self.grid: np.ndarray = np.zeros((self.height_cells, self.width_cells), dtype=np.int8)
         self.entities: list[Entity] = []
+        self.food_list: set[tuple[int, int]] = set()
 
     def randomize_food(self, amount: int) -> None:
         """
@@ -27,7 +28,7 @@ class World:
                 y: int = random.randint(0, self.height_cells - 1)
 
                 if self.grid[y, x] == Config.CELL_EMPTY:
-                    self.grid[y, x] = Config.CELL_FOOD
+                    self.place_food(x, y)
                     placed = True
 
                 attempts += 1
@@ -44,7 +45,6 @@ class World:
                 ry = random.randint(0, self.height_cells - 1)
 
                 # Check if cell is walkable (not a wall)
-                # We allow spawning on food, but usually look for empty space if possible
                 if self.grid[ry, rx] != Config.CELL_WALL:
                     x, y = rx, ry
                     placed = True
@@ -53,7 +53,7 @@ class World:
             if not placed:
                 return # Could not find a spot
         else:
-            # Bounds check if specific coordinates provided
+            # Bounds check
             if not (0 <= x < self.width_cells and 0 <= y < self.height_cells):
                 return
             if self.grid[y, x] == Config.CELL_WALL:
@@ -75,13 +75,10 @@ class World:
         Updates the world state.
         """
         # Update all entities
-        # Iterate backwards to safely remove dead entities if needed,
-        # though currently we just filter them out for next frame logic if we were managing list indices
-        # Python list comprehension is safer for filtering
-
         active_entities = []
         for entity in self.entities:
-            entity.update(self.grid)
+            # We pass the full world instance now so Entity can access food_list and remove_food
+            entity.update(self)
             if entity.energy > 0:
                 active_entities.append(entity)
 
@@ -93,12 +90,18 @@ class World:
         Entities remain.
         """
         self.grid.fill(Config.CELL_EMPTY)
+        self.food_list.clear()
 
     def place_wall(self, x: int, y: int) -> None:
         """
         Places a wall at grid coordinates if within bounds.
+        Removes food if overwriting.
         """
         if 0 <= x < self.width_cells and 0 <= y < self.height_cells:
+            # If there was food, remove it from list
+            if self.grid[y, x] == Config.CELL_FOOD:
+                self.remove_food(x, y)
+
             self.grid[y, x] = Config.CELL_WALL
 
     def place_food(self, x: int, y: int) -> None:
@@ -106,15 +109,25 @@ class World:
         Places food at grid coordinates if within bounds.
         """
         if 0 <= x < self.width_cells and 0 <= y < self.height_cells:
+            # If there was a wall, overwrite it.
+            # If already food, just ensure it's in list (set handles dups).
             self.grid[y, x] = Config.CELL_FOOD
+            self.food_list.add((x, y))
+
+    def remove_food(self, x: int, y: int) -> None:
+        """
+        Removes food from grid and list.
+        """
+        # Only act if it IS food (optimization) or just force clear
+        if self.grid[y, x] == Config.CELL_FOOD:
+            self.grid[y, x] = Config.CELL_EMPTY
+            self.food_list.discard((x, y))
 
     def draw(self, surface: pygame.Surface) -> None:
         """
         Renders the grid to the given surface.
         Optimized to only draw non-empty cells.
         """
-        # Get coordinates of all non-empty cells
-        # rows (y indices), cols (x indices)
         rows, cols = np.where(self.grid != Config.CELL_EMPTY)
 
         for r, c in zip(rows, cols):
@@ -126,7 +139,7 @@ class World:
             elif cell_value == Config.CELL_FOOD:
                 color = Config.COLOR_FOOD
             else:
-                continue # Should not happen given the filter, but safe guard
+                continue
 
             rect: tuple[int, int, int, int] = (
                 c * Config.CELL_SIZE,
